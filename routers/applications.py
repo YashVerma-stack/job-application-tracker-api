@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from starlette import status
-from schema.application import ApplicationResponse, CreateApplication
+from schema.application import ApplicationResponse, CreateApplication, ApplicationStatus
 from dependencies import user_dependency, db_dependency
 from models.application import Application
 from typing import List
+from sqlalchemy import or_
 
 router = APIRouter(
     prefix = '/application',
@@ -13,12 +14,31 @@ router = APIRouter(
 
 
 @router.get('/', status_code=status.HTTP_200_OK, response_model=List[ApplicationResponse])
-async def get_all_applicaattion_of_user(user: user_dependency, db: db_dependency):
+async def get_all_applicaattion_of_user(
+        user: user_dependency,
+        db: db_dependency,
+        application_status: ApplicationStatus | None = None,
+        company: str | None = None,
+        search: str | None = None
+    ):
+    
     if not user:
         raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail = "user is unauthenticated")
-    application_form = db.query(Application).filter(Application.user_id == user.get('id')).all()
+    query = db.query(Application).filter(Application.user_id == user.get('id'))
     
-    return application_form 
+    if application_status is not None:
+        query = query.filter(Application.status == application_status)
+        
+    if company is not None:
+        company = company.casefold()
+        query = query.filter(Application.company.contains(company))
+        
+    if search is not None:
+        search = search.casefold()
+        query = query.filter(or_(Application.job_title.contains(search), Application.company.contains(search)))
+        
+    return query.all()
+
 
 @router.get('/{id}', status_code = status.HTTP_200_OK, response_model = ApplicationResponse)
 async def get_application_by_id(user: user_dependency, db: db_dependency ,id: int):
@@ -91,4 +111,3 @@ async def delete_application(db: db_dependency, user: user_dependency, applicati
     db.commit()
     
     return {'msg': 'Application is Deleted'}
-
