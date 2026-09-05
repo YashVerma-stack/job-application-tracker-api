@@ -1,6 +1,7 @@
 from database import Base
-from sqlalchemy import Column,  Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column,  Integer, String, DateTime, ForeignKey
 from datetime import datetime, timezone
+from sqlalchemy.orm import relationship
 
 class Application(Base):
     __tablename__ = 'applications'
@@ -24,3 +25,5 @@ class Application(Base):
         default = lambda: datetime.now(timezone.utc),
         onupdate = lambda: datetime.now(timezone.utc)
     )
+    
+    user = relationship("User", back_populates = "applications")

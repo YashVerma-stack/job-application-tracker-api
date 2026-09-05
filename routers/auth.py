@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timezone, timedelta, datetime
 from jose import jwt
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
-from dependencies import db_dependency, user_dependency
+from dependencies import db_dependency, user_dependency, admin_dependency
 
 
 router = APIRouter(
@@ -28,8 +28,8 @@ def authenticate_user(username: str, password: str, db):
         return False
     return user
 
-def get_access_token(username: str, id: int, expiry_delta: timedelta):
-    payload = ({'sub': username, 'id': id})
+def get_access_token(username: str, id: int, role: str, expiry_delta: timedelta):
+    payload = ({'sub': username, 'id': id, 'role': role})
     expires = datetime.now(timezone.utc) + expiry_delta
     payload.update({'exp': expires})
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -54,7 +54,7 @@ async def login_to_access_token(db: db_dependency, form_data: Annotated[OAuth2Pa
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = 'Unauthorized User')
-    token = get_access_token(user.username, user.id, timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES))
+    token = get_access_token(user.username, user.id, user.role, timedelta(minutes = ACCESS_TOKEN_EXPIRE_MINUTES))
     
     return {'access_token': token, 'token_type': 'bearer'}  
 
@@ -65,3 +65,6 @@ async def get_user(user: user_dependency, db: db_dependency):
     return db.query(User).filter(User.id == user.get('id')).first()
 
 
+@router.get('/admin-test')
+async def admin_test(admin: admin_dependency):
+    return {'msg': 'You are an admin'}
