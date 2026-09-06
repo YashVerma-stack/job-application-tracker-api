@@ -4,6 +4,8 @@ from starlette import status
 from schema.user import UserResponse
 from dependencies import admin_dependency, db_dependency
 from models.user import User
+from models.application import Application
+from schema.application import ApplicationResponse
 
 
 router = APIRouter(
@@ -35,6 +37,11 @@ async def toggle_activity_of_user(admin: admin_dependency, db: db_dependency, us
     user.is_active = not user.is_active
     
     db.commit()
+    
+@router.get('/applications', status_code = status.HTTP_200_OK, response_model = List[ApplicationResponse])
+async def get_all_application(admin: admin_dependency, db: db_dependency):
+    applications = db.query(Application).all()
+    return applications
     
         
     
