@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Annotated
 from starlette import status
-from schema.user import CreateUser, UserResponse
+from schema.user import CreateUser, UserResponse, UpdatePassword
 from schema.token import Token
 from models.user import User
 from passlib.context import CryptContext
@@ -65,6 +65,23 @@ async def get_user(user: user_dependency, db: db_dependency):
     return db.query(User).filter(User.id == user.get('id')).first()
 
 
-@router.get('/admin-test')
-async def admin_test(admin: admin_dependency):
-    return {'msg': 'You are an admin'}
+@router.patch('/update_password', status_code = status.HTTP_200_OK)
+async def update_user_password(user: user_dependency, db: db_dependency, password_info: UpdatePassword):
+    existing_user = db.query(User).filter(User.id == user.get('id')).first()
+    
+    if existing_user is None:
+        raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "user not found")
+    
+    if not bcrypt_context.verify(password_info.current_password, existing_user.hashed_password):
+        raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail = "Invalid Credentials")
+    
+    if bcrypt_context.verify(password_info.new_password, existing_user.hashed_password):
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST, detail = "New password must be different from current password")
+    
+    existing_user.hashed_password = bcrypt_context.hash(password_info.new_password)
+    
+    db.commit()
+    db.refresh(existing_user)
+    
+    return {'msg': 'Password changed successfully'}
+    

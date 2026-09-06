@@ -7,7 +7,7 @@ from models.application import Application
 
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(title = 'JOB_APPLICATION_TRACKER_API')
 
 app.include_router(auth.router)
 app.include_router(applications.router)

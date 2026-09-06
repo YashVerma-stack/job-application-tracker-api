@@ -3,14 +3,15 @@ from models.user import User
 from passlib.context import CryptContext
 from models.application import Application
 
+
 bcrypt_context = CryptContext(['bcrypt'], deprecated='auto')
 
 db = SessionLocal()
 
 new_user = User(
-    username = 'test1',
-    email = 'test1@gmail.com',
-    hashed_password = bcrypt_context.hash('test1'),
+    username = 'test3',
+    email = 'test3@gmail.com',
+    hashed_password = bcrypt_context.hash('test3'),
     is_active = True,
     role = "user"
 )
