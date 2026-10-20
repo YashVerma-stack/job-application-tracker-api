@@ -84,4 +84,3 @@ async def update_user_password(user: user_dependency, db: db_dependency, passwor
     db.refresh(existing_user)
     
     return {'msg': 'Password changed successfully'}
-    
