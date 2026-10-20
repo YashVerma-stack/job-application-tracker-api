@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from starlette import status
 from schema.application import ApplicationResponse, CreateApplication, ApplicationStatus
 from dependencies import user_dependency, db_dependency
@@ -19,25 +19,41 @@ async def get_all_applicaattion_of_user(
         db: db_dependency,
         application_status: ApplicationStatus | None = None,
         company: str | None = None,
-        search: str | None = None
+        search: str | None = None,
+        skip: int = Query(default=0, ge=0),
+        limit: int = Query(default=10, ge=1, le=100)
     ):
     
-    if not user:
-        raise HTTPException(status_code = status.HTTP_401_UNAUTHORIZED, detail = "user is unauthenticated")
     query = db.query(Application).filter(Application.user_id == user.get('id'))
-    
+
     if application_status is not None:
         query = query.filter(Application.status == application_status)
         
     if company is not None:
-        company = company.casefold()
-        query = query.filter(Application.company.contains(company))
+        company = company.strip().casefold()
+        if company:
+            query = query.filter(
+                Application.company.ilike(f"%{company}%")
+            )
         
     if search is not None:
-        search = search.casefold()
-        query = query.filter(or_(Application.job_title.contains(search), Application.company.contains(search)))
+        search = search.strip()
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Application.job_title.ilike(search_pattern),
+                    Application.company.ilike(search_pattern)
+                )
+            )
         
-    return query.all()
+    return (
+        query
+        .order_by(Application.id.asc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @router.get('/{id}', status_code = status.HTTP_200_OK, response_model = ApplicationResponse)
