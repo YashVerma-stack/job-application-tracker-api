@@ -20,31 +20,45 @@ def get_db():
 db_dependency = Annotated[Session, Depends(get_db)]
         
 def get_current_user(token: Annotated[str, Depends(oauth_bearer)], db: db_dependency):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired authentication token", headers={"WWW-Authenticate": "Bearer"},
+    )
     try: 
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get('sub')
-        id: int = payload.get('id')
-        role: str = payload.get('role')
+        username = payload.get("sub")
+        user_id = payload.get("id")
+        token_role = payload.get("role")
         
-        if username is None or id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail ='UNAUTHORIZED USER' )
-        
-        user = db.query(User).filter(User.id == id).first()
-        
-        if user is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = "user not found")
-        
-        if not user.is_active:
-            raise HTTPException(status_code = status.HTTP_403_FORBIDDEN, detail = 'user is inactive')
-        
-        return {
-            'username': user.username,
-            'id': user.id,
-            'role': user.role
-        }
-        
+        if  (
+            not isinstance(username, str)
+            or not username
+            or type(user_id) is not int
+            or user_id <= 0
+            or not isinstance(token_role, str)
+        ):
+            raise credentials_exception
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail ='UNAUTHORIZED USER' )
+        raise credentials_exception
+        
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if user is None:
+        raise credentials_exception
+        
+    if user.username != username:
+        raise credentials_exception
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+        
+    return {
+        'username': user.username,
+        'id': user.id,
+        'role': user.role
+    }
     
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
