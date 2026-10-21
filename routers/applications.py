@@ -29,6 +29,7 @@ async def get_all_applicaattion_of_user(
     if application_status is not None:
         query = query.filter(Application.status == application_status)
         
+        
     if company is not None:
         company = company.strip().casefold()
         if company:
